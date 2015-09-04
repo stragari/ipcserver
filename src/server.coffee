@@ -1,56 +1,62 @@
-IPCServer = require('./ipc_manager').server
-IPCConfig = require('./config/config').IPC
-
-class Server
-
-    constructor: ->
-        @subscribers = []
-        @server = new IPCServer()
-
-        @init()
-
-    init: ->
-        @server.setConfig IPCConfig.server
-        @server.create()
-        .then =>
-            console.log "[Server]: Server was started successfully"
-
-            @server.emit IPCConfig.channels.HELLO_EVENTS, 'hello'
-
-            console.log "[Server]: Emitted 'hello' by 'hello' channel"
-
-            console.log "[Server]: set 'on'"
-
-#            @server.on IPCConfig.channels.HELLO_EVENTS, @hello
-#            @server.on IPCConfig.channels.BY_EVENTS, @by
-#            @server.on IPCConfig.channels.EVENTS, @event
-#            @server.on 'connected', @clientConnected
-#            @server.on 'disconnected', @clientDisconnected
-
-            console.log "[Server]: set 'on' done"
-
-        .fail (error) ->
-            console.error "[Server] - [init]: #{error}"
-
-    hello: (data) ->
-        console.log "[Server] - [_hello]: received event '_clientConnected' "
-        console.log data
-
-    clientConnected: (data) ->
-        console.log "[Server] - [_clientConnected]: received event '_clientConnected' "
-        console.log data
-
-    clientDisconnected: (data) ->
-        console.log "[Server] - [_clientDisconnected]: received event '_clientDisconnected' "
-        console.log data
-
-    by: (data) ->
-        console.log "[Server] - [by]: received event 'by' "
-
-    event: (data) ->
-        console.log "[Server] - [event]: received event 'event' make something "
-
-module.exports = Server
+ipc = require 'node-ipc'
+net = require 'net'
 
 
-server = new Server()
+dateInit = null
+
+translateMilisecondTStandarHour = (diff) ->
+    hour =
+        hours: Math.floor(diff / (1000 * 60 * 60))
+        mins: Math.floor(diff / (1000 * 60))
+        secs: Math.floor(diff / 1000)
+
+    return hour
+
+serverMessage = (data, socket) =>
+    # proccess data
+    if dateInit is null
+        dateInit = new Date()
+
+    data =
+        id: ipc.config.id
+        typeEvent: 'done'
+        message : data.message
+
+    ipc.server.emit socket, 'done', data
+
+disconnect = (data, socket) =>
+    console.log '[disconnect - channel]'
+
+shutdown = (data, socket) =>
+    console.log '[shutdown - channel]'
+    ipc.server.emit socket, 'disconnected', data
+
+    dateEnd = new Date()
+    dateMillisecond = dateEnd.getTime() - dateInit.getTime()
+    hour = translateMilisecondTStandarHour dateMillisecond
+    console.log 'total: ', hour
+    console.log 'dateMillisecond: ', dateMillisecond
+
+connect  = (socket) =>
+    console.log '[connect - channel]'
+    ipc.server.emit socket, 'event', hello: 'world'
+
+listen = () ->
+    ipc.server.on 'channel-ipc', serverMessage
+    ipc.server.on 'disconnect', disconnect
+    ipc.server.on 'shutdown', shutdown
+    ipc.server.on 'connect', connect
+
+ipc.config.id   = 'exampleServer'
+ipc.config.retry = 1500
+ipc.config.silent = true
+
+ipc.serve listen
+
+ipc.server.define.listen['channel-ipc'] = 'This event type listens for command arguments.'
+ipc.server.define.listen['disconnect'] = 'This event type listens for command arguments.'
+ipc.server.define.listen['shutdown'] = 'This event type listens for command arguments.'
+ipc.server.define.listen['done'] = 'This event type listens for command arguments.'
+ipc.server.define.listen['event'] = 'This event type listens for command arguments.'
+
+ipc.server.start()
