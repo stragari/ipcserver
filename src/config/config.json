@@ -1,0 +1,21 @@
+{
+    "IPC": {
+        "server": {
+            "id": "exampleServer",
+            "silent": false,
+            "retry": 500,
+            "maxRetries": 10
+        },
+        "client": {
+            "id": "exampleClient",
+            "silent": false,
+            "retry": 500,
+            "maxRetries": 10
+        },
+        "channels": {
+            "HELLO_EVENTS": "hello",
+            "BY_EVENTS": "by",
+            "EVENTS": "channel-events"
+        }
+    }
+}
